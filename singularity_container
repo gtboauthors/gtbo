@@ -1,0 +1,61 @@
+Bootstrap: library
+From: ubuntu:20.04
+Stage: build
+
+%setup
+
+%environment
+    export PATH="/root/.local/bin:$PATH"
+    export POETRY_VIRTUALENVS_PATH=/bs/virtualenvs
+    export POETRY_HOME=/bs/poetry
+    export LD_LIBRARY_PATH=/bs/BenchSuite/data/mujoco210/bin/:/usr/lib/nvidia
+    export MUJOCO_PY_MUJOCO_PATH=/bs/BenchSuite/data/mujoco210
+
+%post -c /bin/bash
+    mkdir /bs
+    export POETRY_VIRTUALENVS_PATH=/bs/virtualenvs
+    export DEBIAN_FRONTEND=noninteractive
+    export POETRY_HOME=/bs/poetry
+    export TZ=Etc/UTC
+    export LD_LIBRARY_PATH=/bs/BenchSuite/data/mujoco210/bin/:/usr/lib/nvidia
+    export MUJOCO_PY_MUJOCO_PATH=/bs/BenchSuite/data/mujoco210
+    echo -e "deb http://ftp.acc.umu.se/ubuntu focal main universe restricted\ndeb http://ftp.acc.umu.se/ubuntu focal-updates main universe restricted\ndeb http://ftp.acc.umu.se/ubuntu focal-security main universe restricted" > /etc/apt/sources.list
+    apt-get update && apt-get -y install software-properties-common swig libglew-dev patchelf libosmesa6-dev libgl1-mesa-glx libglfw3
+    add-apt-repository ppa:deadsnakes/ppa
+    apt-get update
+    apt-get -y install python3-pip python3-wheel git python3.11 python3.11-dev python3.11-venv curl python3.8 python3.8-dev python3.8-venv libc6
+    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.3.2 python3.11 -
+    export PATH="/bs/poetry/bin:$PATH"
+    cd /bs
+    git clone git@github.com:gtboauthors/gtbo.git
+    cd gtbo
+    poetry env use python3.11
+    poetry run pip install swig==4.1.1
+    poetry run pip install pyrfr==0.9.0
+    poetry -v install
+    cd /bs
+    git clone https://github.com/LeoIV/BenchSuite.git
+    cd BenchSuite
+    git checkout no-mujoco
+    # poetry config installer.parallel false --local
+    cd data/svm
+    gzip -d CT_slice_*
+    cd ../..
+    poetry env use python3.8
+    poetry install
+
+%runscript
+    echo "Container was created"
+    echo "Arguments received: $*"
+    bash -c "PATH='/bs/poetry/bin:$PATH' cd /bs/gtbo && PATH='/bs/poetry/bin:$PATH' poetry run python3 main.py $*"
+
+%startscript
+
+%test
+
+%labels
+    Author anonymous
+    Version v0.0.1
+
+%help
+    This is a container for GTBO
